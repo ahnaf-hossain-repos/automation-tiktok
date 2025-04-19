@@ -1,5 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, make_response
 import os
+import random
+import string
+import urllib.parse
 
 app = Flask(__name__)
 client_id = os.getenv("CLIENT_KEY")
