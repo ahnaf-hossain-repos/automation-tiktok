@@ -25,7 +25,7 @@ def generate():
 
         # Build the TikTok OAuth URL
         params = {
-            'client_key': CLIENT_KEY,
+            'client_key': client_id,
             'scope': 'user.info.basic',
             'response_type': 'code',
             'redirect_uri': "https://automation-tiktok.onrender.com/home",
