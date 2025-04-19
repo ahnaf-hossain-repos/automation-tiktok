@@ -12,7 +12,7 @@ def home():
 @app.route("/generate", methods=["GET"])
 def generate():
     # Sample response; customize this as needed
-    return jsonify({"message": "GET request received" + client_secret, "status": "success"})
+    # return jsonify({"message": "GET request received" + client_secret, "status": "success"})
     try:
         csrf_state = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
 
