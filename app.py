@@ -16,7 +16,7 @@ def home():
     return "Hello"
 
 @app.route("/redirect")
-def redirect():
+def redirectpage():
     return "REDIRECT"
 
 @app.route("/generate", methods=["GET"])
