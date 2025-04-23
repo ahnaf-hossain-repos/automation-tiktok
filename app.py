@@ -45,7 +45,7 @@ def redirect_handler():
         # Make POST request to get the access token
         response = requests.post(token_url, data=data, headers=headers)
         token_data = response.json()
-        console.log(token_data)
+        print(token_data)
 
         if response.status_code != 200:
             return jsonify({"error": "Failed to get token", "details": token_data}), 400
