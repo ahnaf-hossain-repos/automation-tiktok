@@ -31,11 +31,11 @@ def redirect_handler():
         token_url = 'https://open.tiktokapis.com/v2/oauth/token/'
 
         data = {
-            "client_key": CLIENT_KEY,
-            "client_secret": CLIENT_SECRET,
+            "client_key": client_id,
+            "client_secret": client_secret,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": REDIRECT_URI
+            "redirect_uri": redirect_uri
         }
 
         headers = {
