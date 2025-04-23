@@ -21,7 +21,7 @@ def redirect_handler():
         code = request.args.get('code')
         state = request.args.get('state')
         scopes = request.args.get('scopes')
-        console.log("code")
+        print("code")
 
         # Optional: verify `state` matches cookie/cached value
 
