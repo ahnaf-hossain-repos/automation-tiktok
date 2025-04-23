@@ -16,8 +16,50 @@ def home():
     return "Hello"
 
 @app.route("/redirect")
-def redirectpage():
-    return "REDIRECT"
+def redirect_handler():
+    try:
+        code = request.args.get('code')
+        state = request.args.get('state')
+        scopes = request.args.get('scopes')
+        console.log("code")
+
+        # Optional: verify `state` matches cookie/cached value
+
+        if not code:
+            return "No authorization code provided", 400
+
+        token_url = 'https://open.tiktokapis.com/v2/oauth/token/'
+
+        data = {
+            "client_key": CLIENT_KEY,
+            "client_secret": CLIENT_SECRET,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": REDIRECT_URI
+        }
+
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        # Make POST request to get the access token
+        response = requests.post(token_url, data=data, headers=headers)
+        token_data = response.json()
+        console.log(token_data)
+
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to get token", "details": token_data}), 400
+
+        # Optional: store access_token securely or show it for testing
+        return jsonify({
+            "access_token": token_data.get("access_token"),
+            "expires_in": token_data.get("expires_in"),
+            "open_id": token_data.get("open_id"),
+            "scope": token_data.get("scope")
+        })
+    except Exception as e:
+        print(f"Redirect error: {e}")
+        return "Something went wrong during the redirect.", 500
 
 @app.route("/generate", methods=["GET"])
 def generate():
