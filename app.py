@@ -87,7 +87,7 @@ def generate():
         url = 'https://www.tiktok.com/v2/auth/authorize/'
 
         url += '?client_key='+client_id
-        url += '&scope=user.info.basic+video.list+video.upload+video.publish+user.info.stats+user.info.profile'
+        url += '&scope=user.info.basic+video.list'
         url += '&response_type=code'
         url += '&redirect_uri='+ redirect_uri
         url += '&state=' + csrf_state
