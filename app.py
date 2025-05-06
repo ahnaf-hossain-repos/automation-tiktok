@@ -55,7 +55,8 @@ def redirect_handler():
             "access_token": token_data.get("access_token"),
             "expires_in": token_data.get("expires_in"),
             "open_id": token_data.get("open_id"),
-            "scope": token_data.get("scope")
+            "scope": token_data.get("scope"),
+            "refresh_token":token_data.get("refresh_token")
         })
     except Exception as e:
         print(f"Redirect error: {e}")
