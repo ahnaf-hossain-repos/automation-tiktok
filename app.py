@@ -5,11 +5,80 @@ import string
 import urllib.parse
 import requests
 import json
+import psycopg2
+import datetime
 
 app = Flask(__name__)
 client_id = os.getenv("CLIENT_KEY")
 client_secret = os.getenv("CLIENT_SECRET")
 redirect_uri = os.getenv("REDIRECT_URI")
+
+# Use Render's DATABASE_URL or environment variable
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+@app.route('/')
+def landing():
+    try:
+        # Connect to PostgreSQL
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
+
+        # Get user record
+        cursor.execute("SELECT token, refresh_token, time_of_expiry FROM users WHERE name = %s", ('Ahnaf',))
+        result = cursor.fetchone()
+        if not result:
+            return "User not found"
+
+        access_token, refresh_token, expires_at = result
+        print("TOKENS  = ", access_token, refresh_token)
+
+        # Check if token is expired
+        now = datetime.datetime.utcnow()
+        if now >= expires_at:
+            # Refresh the token
+            response = requests.post(
+                "https://open.tiktokapis.com/v2/oauth/token/",
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data={
+                    "client_key": CLIENT_KEY,
+                    "client_secret": CLIENT_SECRET,
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token
+                }
+            )
+            data = response.json()
+
+            if 'access_token' not in data:
+                return f"Token refresh failed: {data}"
+
+            new_token = data['access_token']
+            new_refresh = data.get('refresh_token', refresh_token)
+            expires_in = data.get('time_of_expiry', 86400)
+            new_expires_at = now + datetime.timedelta(seconds=expires_in)
+
+            # Update database
+            cursor.execute(
+                "UPDATE users SET token = %s, refresh_token = %s, time_of_expiry = %s WHERE name = %s",
+                (new_token, new_refresh, new_expires_at, 'Ahnaf')
+            )
+            conn.commit()
+            print("Token refreshed and updated in DB.")
+
+        else:
+            print("Token still valid.")
+
+        cursor.close()
+        conn.close()
+
+        return "✅ Successfully checked and handled token for Ahnaf"
+
+    except Exception as e:
+        return f"❌ Error: {e}"
+
+
+@app.route("/")
+def landing():
+
 @app.route("/home")
 def home():
     print(client_id)
