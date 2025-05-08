@@ -7,7 +7,8 @@ import requests
 import json
 import psycopg2
 import datetime
-
+from dotenv import load_dotenv
+load_dotenv()
 app = Flask(__name__)
 client_id = os.getenv("CLIENT_KEY")
 client_secret = os.getenv("CLIENT_SECRET")
@@ -20,17 +21,17 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 def landing():
     try:
         # Connect to PostgreSQL
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(dsn = DATABASE_URL)
         cursor = conn.cursor()
 
         # Get user record
-        cursor.execute("SELECT token, refresh_token, time_of_expiry FROM users WHERE name = %s", ('Ahnaf',))
+        cursor.execute("SELECT token, refresh, time_of_expiry FROM users WHERE name = %s", ('Ahnaf',))
         result = cursor.fetchone()
         if not result:
             return "User not found"
 
-        access_token, refresh_token, expires_at = result
-        print("TOKENS  = ", access_token, refresh_token)
+        access_token, refresh, expires_at = result
+        print("TOKENS  = ", access_token, refresh)
 
         # Check if token is expired
         now = datetime.datetime.utcnow()
@@ -43,7 +44,7 @@ def landing():
                     "client_key": CLIENT_KEY,
                     "client_secret": CLIENT_SECRET,
                     "grant_type": "refresh_token",
-                    "refresh_token": refresh_token
+                    "refresh_token": refresh
                 }
             )
             data = response.json()
@@ -52,13 +53,13 @@ def landing():
                 return f"Token refresh failed: {data}"
 
             new_token = data['access_token']
-            new_refresh = data.get('refresh_token', refresh_token)
+            new_refresh = data.get('refresh_token', refresh)
             expires_in = data.get('time_of_expiry', 86400)
             new_expires_at = now + datetime.timedelta(seconds=expires_in)
 
             # Update database
             cursor.execute(
-                "UPDATE users SET token = %s, refresh_token = %s, time_of_expiry = %s WHERE name = %s",
+                "UPDATE users SET token = %s, refresh = %s, time_of_expiry = %s WHERE name = %s",
                 (new_token, new_refresh, new_expires_at, 'Ahnaf')
             )
             conn.commit()
@@ -121,7 +122,7 @@ def redirect_handler():
             "expires_in": token_data.get("expires_in"),
             "open_id": token_data.get("open_id"),
             "scope": token_data.get("scope"),
-            "refresh_token":token_data.get("refresh_token")
+            "refresh_token":token_data.get("refresh")
         })
     except Exception as e:
         print(f"Redirect error: {e}")
