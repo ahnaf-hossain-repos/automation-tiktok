@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect, make_response
+from flask import Flask, request, jsonify, redirect, make_response, render_template_string
 import os
 import random
 import string
@@ -8,6 +8,9 @@ import json
 import psycopg2
 import datetime
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+from functools import wraps
+
 load_dotenv()
 app = Flask(__name__)
 client_id = os.getenv("CLIENT_KEY")
@@ -17,64 +20,88 @@ redirect_uri = os.getenv("REDIRECT_URI")
 # Use Render's DATABASE_URL or environment variable
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+job_logs = []
+
+
+def refresh_token_if_expired(username="Ahnaf"):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            try:
+                conn = psycopg2.connect(dsn=DATABASE_URL)
+                cursor = conn.cursor()
+
+                cursor.execute("SELECT token, refresh, time_of_expiry FROM users WHERE name = %s", (username,))
+                result = cursor.fetchone()
+                if not result:
+                    return "User not found"
+
+                access_token, refresh, expires_at = result
+                now = datetime.datetime.utcnow()
+
+                if now >= expires_at:
+                    response = requests.post(
+                        "https://open.tiktokapis.com/v2/oauth/token/",
+                        headers={"Content-Type": "application/x-www-form-urlencoded"},
+                        data={
+                            "client_key": CLIENT_KEY,
+                            "client_secret": CLIENT_SECRET,
+                            "grant_type": "refresh_token",
+                            "refresh_token": refresh
+                        }
+                    )
+                    data = response.json()
+
+                    if 'access_token' not in data:
+                        return f"Token refresh failed: {data}"
+
+                    new_token = data['access_token']
+                    new_refresh = data.get('refresh_token', refresh)
+                    expires_in = data.get('expires_in', 86400)  # fallback to 86400
+                    new_expires_at = now + datetime.timedelta(seconds=expires_in)
+
+                    cursor.execute(
+                        "UPDATE users SET token = %s, refresh = %s, time_of_expiry = %s WHERE name = %s",
+                        (new_token, new_refresh, new_expires_at, username)
+                    )
+                    conn.commit()
+                    print("✅ Token refreshed for", username)
+                else:
+                    print("✅ Token still valid for", username)
+
+                cursor.close()
+                conn.close()
+
+            except Exception as e:
+                return f"❌ Token handling error: {e}"
+
+            return f(*args, **kwargs)
+
+        return wrapper
+    return decorator
+
+@refresh_token_if_expired("Ahnaf")
+def sensor():
+    """ Append a message each time the scheduler runs. """
+    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    job_logs.append(f"Scheduler ran at {timestamp}")
+
+# Set up the scheduler
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(sensor, 'interval', minutes=1)  # change to seconds=10 for fast test
+sched.start()
+# 
+
 @app.route('/')
+@refresh_token_if_expired("Ahnaf")
 def landing():
-    try:
-        # Connect to PostgreSQL
-        conn = psycopg2.connect(dsn = DATABASE_URL)
-        cursor = conn.cursor()
-
-        # Get user record
-        cursor.execute("SELECT token, refresh, time_of_expiry FROM users WHERE name = %s", ('Ahnaf',))
-        result = cursor.fetchone()
-        if not result:
-            return "User not found"
-
-        access_token, refresh, expires_at = result
-        print("TOKENS  = ", access_token, refresh)
-
-        # Check if token is expired
-        now = datetime.datetime.utcnow()
-        if now >= expires_at:
-            # Refresh the token
-            response = requests.post(
-                "https://open.tiktokapis.com/v2/oauth/token/",
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                data={
-                    "client_key": CLIENT_KEY,
-                    "client_secret": CLIENT_SECRET,
-                    "grant_type": "refresh_token",
-                    "refresh_token": refresh
-                }
-            )
-            data = response.json()
-
-            if 'access_token' not in data:
-                return f"Token refresh failed: {data}"
-
-            new_token = data['access_token']
-            new_refresh = data.get('refresh_token', refresh)
-            expires_in = data.get('time_of_expiry', 86400)
-            new_expires_at = now + datetime.timedelta(seconds=expires_in)
-
-            # Update database
-            cursor.execute(
-                "UPDATE users SET token = %s, refresh = %s, time_of_expiry = %s WHERE name = %s",
-                (new_token, new_refresh, new_expires_at, 'Ahnaf')
-            )
-            conn.commit()
-            print("Token refreshed and updated in DB.")
-
-        else:
-            print("Token still valid.")
-
-        cursor.close()
-        conn.close()
-
-        return "✅ Successfully checked and handled token for Ahnaf"
-
-    except Exception as e:
-        return f"❌ Error: {e}"
+    log_html = "<br>".join(reversed(job_logs[-20:]))
+    return render_template_string("""
+        ✅ Successfully checked and handled token for Ahnaf
+        <h1>Welcome Home :)</h1>
+        <h3>Scheduler Log:</h3>
+        <div style="font-family:monospace;">{{ logs|safe }}</div>
+    """, logs=log_html)
 
 @app.route("/home")
 def home():
