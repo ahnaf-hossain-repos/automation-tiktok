@@ -75,10 +75,6 @@ def landing():
     except Exception as e:
         return f"❌ Error: {e}"
 
-
-@app.route("/")
-def landing():
-
 @app.route("/home")
 def home():
     print(client_id)
