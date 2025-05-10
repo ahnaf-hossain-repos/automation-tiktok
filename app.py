@@ -44,8 +44,8 @@ def refresh_token_if_expired(username="Ahnaf"):
                         "https://open.tiktokapis.com/v2/oauth/token/",
                         headers={"Content-Type": "application/x-www-form-urlencoded"},
                         data={
-                            "client_key": CLIENT_KEY,
-                            "client_secret": CLIENT_SECRET,
+                            "client_key": client_id,
+                            "client_secret": client_secret,
                             "grant_type": "refresh_token",
                             "refresh_token": refresh
                         }
